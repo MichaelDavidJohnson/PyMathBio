@@ -73,10 +73,57 @@ class twoDSystem:
             return [dy1dt,dy2dt]
         sol = self.solve_ivp(dydt,[minT,maxT],[initialX,initialY])
         return sol
+    
+    def newtonRaphson(self,testX,testY,accuracy = 0.00001):
+        self.testX = testX
+        self.testY = testY
+        def partial_derivative(func, var=0, point=[]):
+            args = point[:]
+            def wraps(x):
+                args[var] = x
+                return func(*args)
+            return derivative(wraps, point[var], dx = 1e-10)
+        eps = np.sqrt( (self.f(x = self.testX, y = self.testY))**2 + (self.g(x = self.testX, y = self.testY))**2 )
+        
+        while eps > accuracy:
+            print(eps,accuracy)
+            functions = np.array([[self.f(x=self.testX,y=self.testY)],[self.g(x=self.testX,y=self.testY)]])
+            Jacobian = np.array([[partial_derivative(f,0,[self.testX,self.testY]),partial_derivative(f,1,[self.testX,self.testY])],
+                                [partial_derivative(g,0,[self.testX,self.testY]),partial_derivative(g,1,[self.testX,self.testY])]])
+            jacobianInverse = np.linalg.inv(Jacobian)
+            tempArray = np.matmul(jacobianInverse, functions)
+            self.testX = self.testX - tempArray[0][0]
+            self.testY = self.testY - tempArray[1][0]
+            print(Jacobian)
+            eps = np.sqrt( (self.f(x = self.testX, y = self.testY))**2 + (self.g(x = self.testX, y = self.testY))**2 )
+        print("There is a steady state at " [self.testX,self.testY])
+        return self.testX,self.testY
+        
 
-
-    def findSteadyStates(self,epsilon = 0.0001):
-        return 0
+    def findSteadyStates(self,epsilon = 0.0001,method = "Exhaustive"):
+        if method == "Exhaustive":
+            self.steadyStateXArray = []
+            self.steadyStateYArray = []
+            for y in range(self.yMin,self.yMax,epsilon):
+                for x in range(self.xMin,self.xMax,epsilon):
+                    self.newtonRaphson(x,y)
+                    if len(self.steadyStateXArray) == 0 and len(self.steadyStateYArray) == 0:
+                        self.steadyStateXArray.append(self.testX)
+                        self.steadyStateYArray.append(self.testY)
+                    else:
+                        for n in range(len(self.steadyStateXArray)):
+                            if self.steadyStateXArray[n] == self.testX:
+                                pass
+                            else:
+                                self.steadyStateXArray.append(self.testX)
+                    
+                        for m in range(len(self.steadyStateYArray)):
+                            if self.steadyStateYArray[m] == self.testY:
+                                pass
+                            else:
+                                self.steadyStateYArray.append(self.testY)
+            print(steadyStateXArray,steadyStateYArray)
+            return 0
     
     def getStability(self):
         
@@ -85,7 +132,7 @@ class twoDSystem:
             def wraps(x):
                 args[var] = x
                 return func(*args)
-            return derivative(wraps, point[var], dx = 1e-6)
+            return derivative(wraps, point[var], dx = 1e-14)
         
         for n in range(len(self.steadyStateX)):
             Jacobfx = partial_derivative(f,0,[self.steadyStateX[n],self.steadyStateY[n]])
@@ -117,7 +164,12 @@ class twoDSystem:
     def pixelColourPlot(self):
         return 0 
     
-
+    def setNullClines(self):
+        return 0
+    
+    def setDrawTime(self):
+        return 0
+    
     def draw(self):
         fig = plt.figure()
         ax1 = fig.add_subplot(111)
@@ -153,6 +205,12 @@ class twoDSystem:
                 ax1.plot(self.steadyStateX[n],self.steadyStateY[n],'o',color = self.steadyStateColour)
         return fig.show()
 
+
+        
+        
+    
+    
+    
     
 class Logistic:
     def __init__(self,r):
