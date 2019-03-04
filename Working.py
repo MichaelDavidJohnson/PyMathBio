@@ -1,10 +1,10 @@
-
+import matplotlib.pyplot as plt
+import numpy as np
+from scipy.integrate import solve_ivp
+from scipy.misc import derivative
 class twoDSystem:
+
     def __init__(self,f,g):
-        import matplotlib.pyplot as plt
-        import numpy as np
-        from scipy.integrate import solve_ivp
-        from scipy.misc import derivative
         
         self.solve_ivp = solve_ivp
         self.f = f
@@ -19,7 +19,7 @@ class twoDSystem:
         self.steadyStates = False
         self.trajectories = False
         self.title = "Title"
-    
+        #self.setDiffs = False
     
     def setArrows(ArrowNo = 10):
         self.noArrowX = ArrowNo
@@ -40,7 +40,7 @@ class twoDSystem:
             print("Initial condition array sizes don't agree!")
     
     
-    def setPlotRange(xMin = 0 ,xMax = 1,yMin = 0,yMax = 1):
+    def setPlotRange(self,xMin = 0. ,xMax = 1.,yMin = 0.,yMax = 1.):
         self.xMin = xMin
         self.xMax = xMax 
         self.yMin = yMin
@@ -63,7 +63,26 @@ class twoDSystem:
         self.steadyStateColour = colour
         self.steadyStates = True
         
-    
+    def setDiffs(self,fx,fy,gx,gy):
+        self.fx = fx
+        self.fy = fy
+        self.gx = gx
+        self.gy = gy
+        #self.setDiffs = True
+    def getJacobian(self,x0,y0):
+        jOut = np.array([ [self.fx(x=x0,y=y0),self.fy(x=x0,y=y0)],[self.gx(x=x0,y=y0),self.gy(x=x0,y=y0)]])
+        return jOut
+    def getIJacobian(self,x0,y0):
+        det = self.fx(x=x0,y=y0)*self.gy(x=x0,y=y0) - self.fy(x=x0,y=y0)*self.gx(x=x0,y=y0)
+        try:
+            if det==0:
+                raise ValueError
+        except ValueError:
+                print("Determinant is zero!")
+        iOut = (1/det)*np.array([ [self.gy(x=x0,y=y0),-self.fy(x=x0,y=y0)],[-self.gx(x=x0,y=y0),self.fx(x=x0,y=y0)]])
+        return iOut
+        
+        
     
     def getFlow(self,initialX,initialY,iterations = 100,minT=0,maxT=100):    
         def dydt(t,y):
@@ -86,7 +105,6 @@ class twoDSystem:
         eps = np.sqrt( (self.f(x = self.testX, y = self.testY))**2 + (self.g(x = self.testX, y = self.testY))**2 )
         
         while eps > accuracy:
-            print(eps,accuracy)
             functions = np.array([[self.f(x=self.testX,y=self.testY)],[self.g(x=self.testX,y=self.testY)]])
             Jacobian = np.array([[partial_derivative(f,0,[self.testX,self.testY]),partial_derivative(f,1,[self.testX,self.testY])],
                                 [partial_derivative(g,0,[self.testX,self.testY]),partial_derivative(g,1,[self.testX,self.testY])]])
@@ -94,36 +112,47 @@ class twoDSystem:
             tempArray = np.matmul(jacobianInverse, functions)
             self.testX = self.testX - tempArray[0][0]
             self.testY = self.testY - tempArray[1][0]
-            print(Jacobian)
             eps = np.sqrt( (self.f(x = self.testX, y = self.testY))**2 + (self.g(x = self.testX, y = self.testY))**2 )
-        print("There is a steady state at " [self.testX,self.testY])
+        print("There is a steady state at ", [self.testX,self.testY])
         return self.testX,self.testY
-        
+    
+    def newtonRaphsonAnalytic(self,testX,testY,accuracy = 0.00001):
+        tX = testX
+        tY = testY
+        eps = np.sqrt( (self.f(x = tX, y = tY))**2 + (self.g(x = tX, y = tY))**2 )
+        while eps > accuracy:
+            functions = np.array([[self.f(x=tX,y=tY)],[self.g(x=tX,y=tY)]])
+            jacobianInverse = self.getIJacobian(tX,tY)
+            tempArray = np.matmul(jacobianInverse,functions)
+            tX -=  tempArray[0][0]
+            tY -=  tempArray[1][0]
+            eps = np.sqrt( (self.f(x = tX, y = tY))**2 + (self.g(x = tX, y = tY))**2 )
+        print("There is a steady state at ", [tX,tY])
+        return tX,tY
 
-    def findSteadyStates(self,epsilon = 0.0001,method = "Exhaustive"):
+    def findSteadyStates(self,epsilon = 0.01,method = "Exhaustive"):
         if method == "Exhaustive":
-            self.steadyStateXArray = []
-            self.steadyStateYArray = []
-            for y in range(self.yMin,self.yMax,epsilon):
-                for x in range(self.xMin,self.xMax,epsilon):
-                    self.newtonRaphson(x,y)
-                    if len(self.steadyStateXArray) == 0 and len(self.steadyStateYArray) == 0:
-                        self.steadyStateXArray.append(self.testX)
-                        self.steadyStateYArray.append(self.testY)
-                    else:
-                        for n in range(len(self.steadyStateXArray)):
-                            if self.steadyStateXArray[n] == self.testX:
-                                pass
-                            else:
-                                self.steadyStateXArray.append(self.testX)
+            self.steadyStateArray = []
+            def frange(x, y, jump):
+                while x < y:
+                    yield x
+                    x += jump
+            for y in frange(self.yMin,self.yMax,epsilon):
+                for x in frange(self.xMin,self.xMax,epsilon):
+                    tempX,tempY = self.newtonRaphson(x,y,0.0000001)
                     
-                        for m in range(len(self.steadyStateYArray)):
-                            if self.steadyStateYArray[m] == self.testY:
-                                pass
-                            else:
-                                self.steadyStateYArray.append(self.testY)
-            print(steadyStateXArray,steadyStateYArray)
-            return 0
+                    isInCell = (tempX > x - 0.5*epsilon) and (tempX <= x + 0.5*epsilon) and (tempY > y - 0.5*epsilon) and (tempY <= y + 0.5*epsilon)
+                                    
+                    
+                    if isInCell:
+                        self.steadyStateArray.append([tempX,tempY])
+                    
+
+            print(self.steadyStateArray)
+            
+        if method == "Analytic":
+            self.steadyStateXArray = []
+        return 0
     
     def getStability(self):
         
