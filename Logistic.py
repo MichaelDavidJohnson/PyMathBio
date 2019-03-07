@@ -1,4 +1,7 @@
-
+import matplotlib.pyplot as plt
+import numpy as np
+from scipy.integrate import solve_ivp
+from scipy.misc import derivative
 class Logistic:
     def __init__(self,r):
         self.r = r
