@@ -5,8 +5,15 @@ from scipy.misc import derivative
 class twoDSystem:
 
     def __init__(self,f,g):
-        
-        self.solve_ivp = solve_ivp
+        assert isinstance(f,function), print("f must be a lambda function")
+	assert isinstance(g,function), print("g must be a lambda function") 
+        # Initialising variables, xMin and xMax refer to the minimum and maximum range for the x values. Similarly for yMin and
+	# yMax for the y values. noArrowX and noArrowY refer to the amount of arrows in the x and y direction for the use of 
+	# contour plot. arrows defines whether or not the user actually wants the arrows in the contour plot. steadyStates allows
+	# the user to input analytic results of the steady states. Similarly with trajectories. Title refers to the plot title and
+	# numericalSteadyStates refers to a trigger that will indicate whether Newton-Raphson was used in the acquisition of 
+	# steady states.
+	self.solve_ivp = solve_ivp
         self.f = f
         self.g = g
         self.xMin = 0
@@ -19,10 +26,12 @@ class twoDSystem:
         self.steadyStates = False
         self.trajectories = False
         self.title = "Title"
-		self.numericalSteadyStates = False
+	self.numericalSteadyStates = False
     
     def setArrows(ArrowNo = 10):
-        self.noArrowX = ArrowNo
+	assert isinstance(ArrowNo, int), print("The number of arrows must be an integer")
+	""" This method function is used to set the amount of arrows used in the plots, the more arrows the more detail. """
+        self.noArrowX = ArrowNo 
         self.noArrowY = ArrowNo
     
     
